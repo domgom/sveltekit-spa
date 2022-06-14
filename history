@@ -1,0 +1,81 @@
+npm init  svelte@next sveltekit-spa
+
+#✔ Which Svelte app template? › SvelteKit demo app
+#✔ Add type checking? › TypeScript#
+#✔ Add ESLint for code linting? … Yes
+#✔ Add Prettier for code formatting? … No
+#✔ Add Playwright for browser testing? … No
+
+npm install
+
+npm i -D @sveltejs/adapter-static
+
+cat << EOF >> svelte.config.js
+import adapter from '@sveltejs/adapter-static';
+import preprocess from 'svelte-preprocess';
+
+/** @type {import('@sveltejs/kit').Config} */
+const config = {
+	// Consult https://github.com/sveltejs/svelte-preprocess
+	// for more information about preprocessors
+	preprocess: preprocess(),
+
+	kit: {
+		adapter: adapter(
+			{
+				// default options are shown
+				pages: 'build',
+				assets: 'build',
+				fallback: 'index.html',
+				precompress: false
+			}
+		),
+
+		prerender: {
+			// This can be false if you're using a fallback (i.e. SPA mode)
+			default: false
+		},
+
+		// Override http methods in the Todo forms
+		methodOverride: {
+			allowed: ['PATCH', 'DELETE']
+		}
+	}
+};
+
+export default config;
+EOF
+
+cat << EOF >> server.py
+import http.server
+import socketserver
+PORT = 8000
+from http.server import SimpleHTTPRequestHandler
+
+
+
+#text_file = open("index.html", "r")
+#data = text_file.read()
+#text_file.close()
+
+class MyHandler(SimpleHTTPRequestHandler):
+     def send_error(self, code, message=None):
+         print('REACH')
+         if code == 404:
+             #self.error_message_format = data
+             self.send_response(301)
+             self.send_header('Location','http://localhost:8000')
+             self.end_headers()
+         SimpleHTTPRequestHandler.send_error(self, code, message)
+
+httpd = socketserver.TCPServer(("", PORT), MyHandler)
+print("serving at port", PORT)
+httpd.serve_forever()
+EOF
+
+npm run build
+cd build
+python ../server.py 
+
+curl -L -v http://localhost:8000/todos/__data.json
+# Returns index.html as there is no __data.json file present
